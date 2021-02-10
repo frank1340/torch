@@ -1,0 +1,59 @@
+I copied the csv data into a Postgres table cvd to use.
+------------------
+
+Query 1:
+
+Total number of tests performed in US as of yesterday.
+
+Data columns used:
+
+totalTestResults
+
+Sum the totalTestResults for todays date - 1 day across all US states
+
+CREATE TABLE totalTest as (SELECT SUM(totalTestResults) as totalTestsAsOfYesterday from public.cvd 
+where date = (CURRENT_DATE - INTERVAL '1 day'));
+
+------------------
+
+Query 2:
+
+7 day rolling average of new cases per day over the the past 30 days.
+
+Data columns used:
+
+positiveIncrease, state
+
+Note:  Positive increase includes “probable” cases
+
+Average the Sum of positiveIncrease over the past 7 days, including today, for the past 30 days.
+
+CREATE TABLE rollingCaseAverage as (SELECT date, AVG(SUM(positiveIncrease)) OVER(order by date ROWS BETWEEN 6 preceding and CURRENT ROW)::int 
+as rollingAverage from public.cvd where date > CURRENT_DATE - INTERVAL '30 day' 
+group by date);
+
+
+------------------
+
+Query 3:
+
+The 10 states with the highest test positivity rate (positive tests/total tests performed) over the past 30 days.
+
+Data columns used:
+
+positiveIncrease, totalTestResultsIncrease, state
+
+Note:  totalTestResultsIncrease can be 0
+
+Note:  Virgin Islands and Mariana Islands yield a 100% for this, should likely be discounted due to low volume, not really a "state".
+
+Note:  Positive increase includes “probable” cases
+
+Note:  TotalTestResultsIncrease is a summary statistic; different states have different reporting procedures, but in most cases, 
+this is computed by adding positive cases and negative cases for a state.
+
+Take the Sum of positiveIncrease divided by the Sum of totalTestResultsIncrease over the past 30 days grouped by the state and take the top 10 
+
+CREATE TABLE testPositivity as (SELECT state, SUM(positiveIncrease)/SUM(totalTestResultsIncrease)*100 as testPositivity 
+from public.cvd where date > CURRENT_DATE - INTERVAL '30 day' and totalTestResultsIncrease > 0 
+group by state order by testPositivity desc limit 10);
