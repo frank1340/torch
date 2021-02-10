@@ -29,8 +29,7 @@ Note:  Positive increase includes “probable” cases
 Average the Sum of positiveIncrease over the past 7 days, including today, for the past 30 days.
 
 CREATE TABLE rollingCaseAverage as (SELECT date, AVG(SUM(positiveIncrease)) OVER(order by date ROWS BETWEEN 6 preceding and CURRENT ROW)::int 
-as rollingAverage from public.cvd where date > CURRENT_DATE - INTERVAL '30 day' 
-group by date);
+from public.cvd group by date order by date desc limit 30);
 
 
 ------------------
